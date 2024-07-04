@@ -1,27 +1,70 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.Socket;
+import java.util.Scanner;
 
 public class ClientApp {
     public static void main(String[] args) {
-        try {
-
+        try  {
             Socket socket = new Socket("localhost", 8082);
-            System.out.println("Connected to the server.....");
-
-            InputStream inputStream = socket.getInputStream();
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-
-            String message = bufferedReader.readLine();
-            System.out.println("server says.. : " + message);
-
-            socket.close();
-
-
+            new Handler(socket).start();
+            new WriterThread(socket).start();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
+
+    private static class Handler extends Thread {
+        private Socket socket;
+        private BufferedReader bufferedReader;
+
+        public Handler(Socket socket) {
+            this.socket = socket;
+        }
+
+        @Override
+        public void run() {
+            try {
+                bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                String message;
+                while ((message = bufferedReader.readLine()) != null) {
+                    System.out.println("Server : " + message);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    socket.close();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private static class WriterThread extends Thread {
+        private Socket socket;
+        private PrintWriter printWriter;
+        private Scanner scanner;
+
+        public WriterThread(Socket socket) {
+            this.socket = socket;
+        }
+
+        public void run() {
+            try {
+                printWriter = new PrintWriter(socket.getOutputStream(), true);
+                scanner = new Scanner(System.in);
+                String message;
+                while (true) {
+                    message = scanner.nextLine();
+                    printWriter.println(message);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+    }
+
 }
